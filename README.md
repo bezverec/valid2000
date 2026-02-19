@@ -22,7 +22,7 @@ Validátor JPEG 2000 a TIFF pro **NDK** kontrolu (intepretace NDK profilu):
 
 ### Společné
 - Python **3.10+** (doporučeno 3.13)
-- Windows 11 (cilová platforma, omlouvám se :))
+- Windows 11 (cílová platforma, omlouvám se :))
 
 ### JP2
 - `jpylyzer` (na Windows typicky `jpylyzer.exe`)
