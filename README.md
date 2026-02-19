@@ -390,7 +390,7 @@ GPLv3.
 - ICC je kontrolováno jako **FAIL**, pokud v datech není přítomné.
 - **ORGtparts R** heuristika je **heuristika** (odvozená z pořadí SOT/tpsot/isot) – není to “oficiální” pole v JP2, ale praktická interpretace. V profilu NDK řazení tile partů podle rozlišení není zřejmě specificky vyžadováno, ale vyskytuje se jako přepínač ve vzorových příkazech pro Kakadu kodek.
 - **TLM a heuristika „FF55“:** Jpylyzer umí indikovat přítomnost TLM marker segmentu jako `<tlm/>` (tj. element existuje, i když nemá textovou hodnotu). Pro rychlé „sanity check“ je možné doplnit *nízkoúrovňovou* heuristiku, která v surovém codestreamu hledá marker `0xFF55` (TLM). **Pozor:** samotný výskyt bajtové dvojice `FF55` *kdekoli v souboru* není důkaz TLM — může se objevit i jako data uvnitř jiných segmentů. Smysl má až kontrola, že `FF55` leží **v hlavičce codestreamu** na očekávaném místě mezi marker segmenty (typicky po `SIZ/COD/QCD/COM…` a před prvními `SOT`). Proto se to bere jen jako heuristika pro diagnostiku/ladění a rozhodující je parsovaný výstup z nástroje (jpylyzer / dump codestreamu).
-- Při vyjasnění sporných parametrů *hardcodnutou* interpretaci opravím.
+- Při vyjasnění sporných parametrů *hardcodenutou* interpretaci opravím.
 
 ---
 
