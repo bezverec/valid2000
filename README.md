@@ -24,15 +24,15 @@ Validátor JPEG 2000 a TIFF pro **NDK** kontrolu (intepretace NDK profilu):
 - Git (volitelné)
 - Python **3.10+** (doporučeno 3.13)
 - Windows 11 (cílová platforma, omlouvám se :))
-- [Jpylyzer 2.2.1](https://jpylyzer.openpreservation.org/)
+
 - pro validaci TIFF je potřeba [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) a `tiffdump` z `libtiff-tolls`
 
 ### JP2
-- `jpylyzer` (na Windows typicky `jpylyzer.exe`)
+- - [Jpylyzer 2.2.1](https://jpylyzer.openpreservation.org/) (`jpylyzer.exe`)
   - V GUI/CLI lze zadat cestu přes `--jpylyzer-cmd`.
 
 ### TIFF
-- **WSL** + `tiffdump` dostupné v Linuxu ve WSL
+- [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) a `tiffdump`
   - Typicky balík `libtiff-tools` (Debian/Ubuntu): `sudo apt install libtiff-tools`
 - GUI/CLI standardně převádí cestu `C:\...` → `/mnt/c/...` (lze vypnout).
 
