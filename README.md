@@ -28,7 +28,7 @@ Validátor JPEG 2000 a TIFF pro **NDK** kontrolu (intepretace NDK profilu):
 - pro validaci TIFF je potřeba [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) a `tiffdump` z `libtiff-tolls`
 
 ### JP2
-- - [Jpylyzer 2.2.1](https://jpylyzer.openpreservation.org/) (`jpylyzer.exe`)
+- [Jpylyzer 2.2.1](https://jpylyzer.openpreservation.org/) (`jpylyzer.exe`)
   - V GUI/CLI lze zadat cestu přes `--jpylyzer-cmd`.
 
 ### TIFF
