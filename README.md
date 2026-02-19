@@ -1,6 +1,6 @@
 # Valid2000
 
-Validátor JPEG 2000 a TIFF pro **NDK** kontrolu (intepretace NDK profilu):
+Validátor JPEG 2000 a TIFF pro [**NDK**](https://standardy.ndk.cz/ndk/standardy-digitalizace/standardy-pro-obrazova-data) kontrolu (intepretace NDK profilu)
 
 - **JP2**: parsuje výstup z **jpylyzer** + aplikuje pravidla profilu (NDK Archival / Master kopie).
 - **TIFF**: spustí **tiffdump ve WSL**, z výpisu vytáhne klíčové tagy a aplikuje pravidla profilu (NDK Master).
