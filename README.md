@@ -36,7 +36,7 @@ Validátor JPEG 2000 a TIFF pro [**NDK**](https://standardy.ndk.cz/ndk/standardy
 
 ---
 
-## Instalace (doporučeně venv)
+## Instalace (doporučeno venv)
 
 Stáhnout `gui.py`, `jp2.py`, `tiff.py` do jednoho adresáře.
 
