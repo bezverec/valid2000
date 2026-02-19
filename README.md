@@ -21,6 +21,7 @@ Validátor JPEG 2000 a TIFF pro **NDK** kontrolu (intepretace NDK profilu):
 ## Požadavky
 
 ### Společné
+- Git (volitelné)
 - Python **3.10+** (doporučeno 3.13)
 - Windows 11 (cílová platforma, omlouvám se :))
 
@@ -37,15 +38,24 @@ Validátor JPEG 2000 a TIFF pro **NDK** kontrolu (intepretace NDK profilu):
 
 ## Instalace (doporučeně venv)
 
+Stáhnout `gui.py`, `jp2.py`, `tiff.py` do jednoho adresáře.
+
+nebo
+
+```
+git clone https://github.com/bezverec/valid2000.git
+```
+
+potom
 ```powershell
-cd C:\temp\validator
+cd C:\cesta-k\validatoru
 python -m venv venv
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\venv\Scripts\Activate.ps1
 python -m pip install -U pip
 ```
 
-> Tyto skripty jsou “single-file” a typicky nepotřebují pip balíčky, ale `jp2.py` potřebuje externí `jpylyzer`.
+> Tyto skripty jsou “single-file” a typicky nepotřebují pip balíčky, ale `jp2.py` potřebuje externí `jpylyzer` a `tiff.py` `tiffdump` (`sudo apt install libtiff-tools` na Debianu) přes WSL.
 
 ---
 
@@ -380,6 +390,8 @@ GPLv3.
 - ICC je kontrolováno jako **FAIL**, pokud v datech není přítomné.
 - ORGtparts R heuristika je **heuristika** (odvozená z pořadí SOT/tpsot/isot) – není to “oficiální” pole v JP2, ale praktická interpretace. V profilu NDK řazení tile partů podle rozlišení není zřejmě specificky vyžadováno, ale vyskytuje se jako přepínač ve vzorových příkazech pro Kakadu kodek.
 - Při vyjasnění sporných parametrů *hardcodnutou* interpretaci opravím.
+
+---
 
 ## Screenshot
 <img width="1182" height="851" alt="valid2000" src="https://github.com/user-attachments/assets/24882f7b-b9fe-4297-b1be-9a2515f46c04" />
