@@ -397,3 +397,9 @@ GPLv3.
 ## Screenshot
 <img width="1182" height="851" alt="valid2000" src="https://github.com/user-attachments/assets/24882f7b-b9fe-4297-b1be-9a2515f46c04" />
 
+---
+
+## AI generated code disclosure
+
+The code is generated using ChatGPT 5.x.
+
