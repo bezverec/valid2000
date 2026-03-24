@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Valid2000 (v0.0.1)
+Valid2000 (v0.0.2)
 Author: Jan Houserek
 License: GPLv3
 """
@@ -18,8 +18,8 @@ import subprocess
 import shutil
 import struct
 
-APP_TITLE = "Valid2000 v0.0.1"
-SCRIPT_VERSION = "2026-02-19-valid2000-v0.0.1"
+APP_TITLE = "Valid2000 v0.0.2"
+SCRIPT_VERSION = "2026-03-24-valid2000-v0.0.2"
 
 # -------------------------
 # Normalized model
@@ -373,7 +373,12 @@ def _safe_int_list(x: Any) -> Optional[List[int]]:
     return x
 
 
-def _infer_orgtparts_R(num_tiles: Optional[int], isot: Any, tpsot: Any, tnsot: Any) -> Tuple[bool, str]:
+def _infer_tilepart_sequence_by_part_index(num_tiles: Optional[int], isot: Any, tpsot: Any, tnsot: Any) -> Tuple[bool, str]:
+    """
+    Heuristika nad pořadím SOT záznamů v souboru:
+    bloky stejného tpsot napříč všemi tiles.
+    To je jen serializační vzor, nikoli normativní ORGtparts=R/L/C.
+    """
     if not (isinstance(num_tiles, int) and num_tiles > 0):
         return (False, "unknown")
 
@@ -390,6 +395,11 @@ def _infer_orgtparts_R(num_tiles: Optional[int], isot: Any, tpsot: Any, tnsot: A
         return (False, "unknown")
     parts_per_tile = next(iter(tnsot_set))
     if parts_per_tile < 1:
+        return (False, "unknown")
+
+    if parts_per_tile == 1 and len(isot_l) == num_tiles:
+        if sorted(isot_l) == list(range(num_tiles)) and all(tp == 0 for tp in tpsot_l):
+            return (True, "ambiguous_single_part")
         return (False, "unknown")
 
     if len(isot_l) != num_tiles * parts_per_tile:
@@ -411,10 +421,15 @@ def _infer_orgtparts_R(num_tiles: Optional[int], isot: Any, tpsot: Any, tnsot: A
     if idx != len(isot_l):
         return (False, "unknown")
 
-    return (True, "R")
+    return (True, "by_part_index")
 
 
-def _infer_orgtparts_T(num_tiles: Optional[int], isot: Any, tpsot: Any, tnsot: Any) -> Tuple[bool, str]:
+def _infer_tilepart_sequence_by_tile(num_tiles: Optional[int], isot: Any, tpsot: Any, tnsot: Any) -> Tuple[bool, str]:
+    """
+    Heuristika nad pořadím SOT záznamů v souboru:
+    všechny tile-party jednoho tile za sebou.
+    To je jen serializační vzor, nikoli normativní ORGtparts=R/L/C.
+    """
     if not (isinstance(num_tiles, int) and num_tiles > 0):
         return (False, "unknown")
 
@@ -433,29 +448,95 @@ def _infer_orgtparts_T(num_tiles: Optional[int], isot: Any, tpsot: Any, tnsot: A
     if parts_per_tile < 1:
         return (False, "unknown")
 
+    if parts_per_tile == 1 and len(isot_l) == num_tiles:
+        if sorted(isot_l) == list(range(num_tiles)) and all(tp == 0 for tp in tpsot_l):
+            return (True, "ambiguous_single_part")
+        return (False, "unknown")
+
     if len(isot_l) != num_tiles * parts_per_tile:
         return (False, "unknown")
 
     idx = 0
-    for tile in range(num_tiles):
-        block_tps: List[int] = []
-        block_isot: List[int] = []
+    for tile_idx in range(num_tiles):
+        seen_isot: List[int] = []
+        block_tpsot: List[int] = []
         for _ in range(parts_per_tile):
             if idx >= len(isot_l):
                 return (False, "unknown")
-            block_isot.append(isot_l[idx])
-            block_tps.append(tpsot_l[idx])
+            if isot_l[idx] != tile_idx:
+                return (False, "unknown")
+            seen_isot.append(isot_l[idx])
+            block_tpsot.append(tpsot_l[idx])
             idx += 1
-        if not all(x == tile for x in block_isot):
+        if seen_isot != [tile_idx] * parts_per_tile:
             return (False, "unknown")
-        if sorted(block_tps) != list(range(parts_per_tile)):
+        if block_tpsot != list(range(parts_per_tile)):
             return (False, "unknown")
 
     if idx != len(isot_l):
         return (False, "unknown")
 
-    return (True, "T")
+    return (True, "by_tile")
 
+
+def _infer_tilepart_sequence_pattern(num_tiles: Optional[int], isot: Any, tpsot: Any, tnsot: Any) -> str:
+    ok_part, val_part = _infer_tilepart_sequence_by_part_index(num_tiles, isot, tpsot, tnsot)
+    ok_tile, val_tile = _infer_tilepart_sequence_by_tile(num_tiles, isot, tpsot, tnsot)
+
+    if ok_part and val_part == "ambiguous_single_part":
+        return "ambiguous_single_part"
+    if ok_part and not ok_tile:
+        return "by_part_index"
+    if ok_tile and not ok_part:
+        return "by_tile"
+    if ok_part and ok_tile:
+        if val_part == "ambiguous_single_part" or val_tile == "ambiguous_single_part":
+            return "ambiguous_single_part"
+        return "ambiguous"
+    return "unknown"
+
+
+def _infer_tilepart_grouping_R_like(findings_map: Dict[str, Any], num_tiles: Optional[int], isot: Any, tpsot: Any, tnsot: Any) -> str:
+    """
+    Konzervativní inferenční hint pro resolution-grouped tile-parts.
+    Nejde o plné normativní rozlišení R/L/C, jen o praktický 'R-like'
+    odhad pro NDK profil.
+    """
+    order = findings_map.get("jpylyzer.file.properties.contiguousCodestreamBox.cod.order")
+    layers = findings_map.get("jpylyzer.file.properties.contiguousCodestreamBox.cod.layers")
+    levels = findings_map.get("jpylyzer.file.properties.contiguousCodestreamBox.cod.levels")
+
+    isot_l = _safe_int_list(isot)
+    tpsot_l = _safe_int_list(tpsot)
+    tnsot_l = _safe_int_list(tnsot)
+    if isot_l is None or tpsot_l is None or tnsot_l is None:
+        return "unknown"
+    if not (len(isot_l) == len(tpsot_l) == len(tnsot_l) and len(isot_l) > 0):
+        return "unknown"
+
+    tnsot_set = set(tnsot_l)
+    if len(tnsot_set) != 1:
+        return "unknown"
+    parts_per_tile = next(iter(tnsot_set))
+
+    if findings_map.get("derived.tileparts_per_tile_tpsot_complete") is not True:
+        return "unknown"
+    if findings_map.get("derived.tileparts_cover_all_tiles") is not True:
+        return "unknown"
+    if order not in ("RPCL", "RLCP"):
+        return "unknown"
+    if layers != 1:
+        return "unknown"
+    if not isinstance(levels, int):
+        return "unknown"
+    if parts_per_tile != levels + 1:
+        return "unknown"
+    if not (isinstance(num_tiles, int) and num_tiles > 0):
+        return "unknown"
+    if len(isot_l) != num_tiles * parts_per_tile:
+        return "unknown"
+
+    return "R"
 
 def _tileparts_cover_all_tiles(num_tiles: Optional[int], isot: Any) -> bool:
     if not (isinstance(num_tiles, int) and num_tiles > 0):
@@ -564,23 +645,22 @@ def add_derived(findings_map: Dict[str, Any], jp2_path: Optional[pathlib.Path] =
     findings_map["derived.tileparts_plt_all_zero"] = plt_all_zero
     findings_map["derived.tileparts_ppt_all_zero"] = ppt_all_zero
 
-    ok_r, _ = _infer_orgtparts_R(num_tiles, isot, tpsot, tnsot)
-    ok_t, _ = _infer_orgtparts_T(num_tiles, isot, tpsot, tnsot)
+    seq_by_part_ok, _ = _infer_tilepart_sequence_by_part_index(num_tiles, isot, tpsot, tnsot)
+    seq_by_tile_ok, _ = _infer_tilepart_sequence_by_tile(num_tiles, isot, tpsot, tnsot)
+    findings_map["derived.tilepart_sequence_by_part_index_ok"] = seq_by_part_ok
+    findings_map["derived.tilepart_sequence_by_tile_ok"] = seq_by_tile_ok
+    findings_map["derived.tilepart_sequence_pattern"] = _infer_tilepart_sequence_pattern(num_tiles, isot, tpsot, tnsot)
+    findings_map["derived.tilepart_grouping_inferred"] = _infer_tilepart_grouping_R_like(findings_map, num_tiles, isot, tpsot, tnsot)
 
-    findings_map["derived.tparts_r_pattern_ok"] = ok_r
-    findings_map["derived.tparts_t_pattern_ok"] = ok_t
-
-    if ok_r and not ok_t:
-        org = "R"
-    elif ok_t and not ok_r:
-        org = "T"
-    elif ok_r and ok_t:
-        org = "R"
+    levels = findings_map.get("jpylyzer.file.properties.contiguousCodestreamBox.cod.levels")
+    tnsot_l = _safe_int_list(tnsot)
+    if isinstance(levels, int) and isinstance(tnsot_l, list) and len(tnsot_l) > 0 and len(set(tnsot_l)) == 1:
+        findings_map["derived.tileparts_count_matches_resolutions"] = (next(iter(set(tnsot_l))) == levels + 1)
     else:
-        org = "unknown"
-    findings_map["derived.tparts_org_inferred"] = org
+        findings_map["derived.tileparts_count_matches_resolutions"] = None
 
-    # TLM from bytes (preferred), fallback to XML presence only for XML-only runs
+    # TLM from bytes (preferred); if byte scan is skipped or inconclusive,
+    # fallback to jpylyzer XML presence instead of returning False/None spuriously.
     tlm_present: Optional[bool] = None
 
     if scan_markers and jp2_path is not None and jp2_path.exists() and jp2_path.suffix.lower() != ".xml":
@@ -589,12 +669,17 @@ def add_derived(findings_map: Dict[str, Any], jp2_path: Optional[pathlib.Path] =
             findings_map[k] = v
 
         cnt = findings_map.get("jp2scan.tlm_marker_count")
+        skipped = findings_map.get("jp2scan.skipped") is True
+
         if isinstance(cnt, int):
             tlm_present = cnt > 0
+            findings_map["derived.tlm_source"] = "jp2scan"
+        elif skipped:
+            tlm_present = bool(findings_map.get("jpylyzer.file.properties.contiguousCodestreamBox.tlm._present"))
+            findings_map["derived.tlm_source"] = "xml_presence_fallback_after_skipped_scan"
         else:
-            tlm_present = None
-
-        findings_map["derived.tlm_source"] = "jp2scan"
+            tlm_present = bool(findings_map.get("jpylyzer.file.properties.contiguousCodestreamBox.tlm._present"))
+            findings_map["derived.tlm_source"] = "xml_presence_fallback_after_inconclusive_scan"
     else:
         tlm_present = bool(findings_map.get("jpylyzer.file.properties.contiguousCodestreamBox.tlm._present"))
         findings_map["derived.tlm_source"] = "xml_presence"
@@ -767,7 +852,11 @@ NDK_PROFILE_NDK_MASTER = {
         "derived.tileparts_cover_all_tiles": "Tile-parts pokrývají všechny tiles (set isot == 0..N-1)",
         "derived.tileparts_per_tile_tpsot_complete": "Pro každý tile je tpsot kompletní 0..tnsot-1",
 
-        "derived.tparts_org_inferred": "Tile-part organization (inferováno)",
+        "derived.tilepart_sequence_by_part_index_ok": "Tile-parts serializované po blocích stejného tpsot napříč tiles",
+        "derived.tilepart_sequence_by_tile_ok": "Tile-parts serializované po blocích po jednotlivých tiles",
+        "derived.tilepart_sequence_pattern": "Vzor serializace tile-parts (inferováno)",
+        "derived.tilepart_grouping_inferred": "Grouping tile-parts (konzervativně inferováno)",
+        "derived.tileparts_count_matches_resolutions": "Počet tile-parts na tile odpovídá počtu rozlišení (levels+1)",
 
         "derived.tileparts_plt_all_zero": "PLT count = 0 (všechny tile-parts)",
         "derived.tileparts_ppt_all_zero": "PPT count = 0 (všechny tile-parts)",
@@ -898,7 +987,7 @@ NDK_PROFILE_NDK_MASTER = {
             "assert": "equals",
             "expected": True,
             "level": "error",
-            "message": "NDK Master: TLM (Tile Length Markers) = Ano. (Primárně z jp2scan: hledáme FF55 v codestreamu.)",
+            "message": "NDK Master: TLM (Tile Length Markers) = Ano. (Primárně z jp2scan; při skipped/inconclusive scan fallback na jpylyzer XML.)",
         },
         {
             "id": "tlm_before_first_sot_warn",
@@ -960,14 +1049,21 @@ NDK_PROFILE_NDK_MASTER = {
             "message": "Pro každý tile musí být přítomné všechny tile-parts: tpsot = 0..tnsot-1.",
         },
 
-        # ORGtparts inference: WARN only (not strict)
         {
-            "id": "tileparts_org_warn_if_T",
-            "key": "derived.tparts_org_inferred",
+            "id": "tileparts_grouping_r_like_warn",
+            "key": "derived.tilepart_grouping_inferred",
             "assert": "in",
             "expected": ["R", "unknown"],
             "level": "warn",
-            "message": "ORGtparts=R není v profilu striktně, ale pokud inferujeme per-tile (T), dáme WARN.",
+            "message": "Resolution-grouped tile-parts nelze z dostupných údajů konzervativně inferovat jako R-like.",
+        },
+        {
+            "id": "tileparts_count_matches_resolutions_warn",
+            "key": "derived.tileparts_count_matches_resolutions",
+            "assert": "in",
+            "expected": [True, None],
+            "level": "warn",
+            "message": "Počet tile-parts na tile by měl u resolution-grouped profilu odpovídat počtu rozlišení (levels+1).",
         },
 
         {
