@@ -1,18 +1,17 @@
 # Valid2000
 
-Validátor JPEG 2000 a TIFF pro [**NDK**](https://standardy.ndk.cz/ndk/standardy-digitalizace/standardy-pro-obrazova-data) kontrolu (interpretace NDK profilu)
+Validátor JPEG 2000 a TIFF pro [**NDK**](https://standardy.ndk.cz/ndk/standardy-digitalizace/standardy-pro-obrazova-data) kontrolu (praktická interpretace NDK profilu).
 
 - **JP2**: parsuje výstup z **jpylyzer** + aplikuje pravidla profilu (NDK Archival / Master kopie).
 - **TIFF**: spustí **tiffdump ve WSL**, z výpisu vytáhne klíčové tagy a aplikuje pravidla profilu (NDK Master).
 - **GUI (Tkinter)**: přepínače, tooltipy, barevný výstup, ukládání konfigurace.
 - **Batch režim**: umí validovat **soubor nebo celý adresář** (včetně rekurze a globů).
 
-
 ---
 
 ## Obsah repozitáře
 
-- `jp2.py` – JP2 validátor (jpylyzer + pravidla + odvozené hodnoty, tile-parts heuristiky, volitelný scan markerů FF55/TLM).
+- `jp2.py` – JP2 validátor (jpylyzer + pravidla + odvozené hodnoty, heuristiky nad tile-party a volitelný scan markerů / TLM).
 - `tiff.py` – TIFF validátor (WSL `tiffdump` + pravidla + batch režim).
 - `gui.py` – Tkinter GUI pro JP2 i TIFF (spouští `jp2.py` / `tiff.py` přes aktuální Python).
 
@@ -23,7 +22,7 @@ Validátor JPEG 2000 a TIFF pro [**NDK**](https://standardy.ndk.cz/ndk/standardy
 ### Společné
 - Git (volitelné)
 - Python **3.10+** (doporučeno 3.13)
-- Windows 11 (cílová platforma, omlouvám se :))
+- Windows 11 (cílová platforma)
 
 ### JP2
 - [Jpylyzer 2.2.1](https://jpylyzer.openpreservation.org/) (`jpylyzer.exe`)
@@ -42,11 +41,12 @@ Stáhnout `gui.py`, `jp2.py`, `tiff.py` do jednoho adresáře.
 
 nebo
 
-```
+```powershell
 git clone https://github.com/bezverec/valid2000.git
 ```
 
 potom
+
 ```powershell
 cd C:\cesta-k\validatoru
 python -m venv venv
@@ -55,7 +55,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 python -m pip install -U pip
 ```
 
-> Tyto skripty jsou “single-file” a typicky nepotřebují pip balíčky, ale `jp2.py` potřebuje externí `jpylyzer` a `tiff.py` `tiffdump` (`sudo apt install libtiff-tools` na Debianu) přes WSL.
+> Tyto skripty jsou “single-file” a typicky nepotřebují pip balíčky, ale `jp2.py` potřebuje externí `jpylyzer` a `tiff.py` `tiffdump` přes WSL.
 
 ---
 
@@ -68,11 +68,12 @@ python .\jp2.py D:\data\img.jp2 --jpylyzer-cmd C:\jpylyzer\jpylyzer.exe
 ```
 
 Užitečné přepínače (výběr):
+
 - `--dump-map` vypíše “flattened map” klíčů jako JSON (tvorba pravidel)
 - `--show-ok` zobrazí i OK pravidla
 - `--packetmarkers`, `--mix 2`, `--jp2-format jp2|jph|j2c|jhc` … se jen přeposílají do jpylyzeru
-- `--scan-markers` provede byte-scan JP2/j2c a hledá marker **FF55 (TLM)** v payloadu codestreamu
-- `--dump-jp2scan` vypíše krátký “JP2SCAN” dump (počty/offsety markerů)
+- `--scan-markers` provede doplňkový nízkoúrovňový scan codestreamu
+- `--dump-jp2scan` vypíše krátký “JP2SCAN” dump (počty/offsety markerů a stav scanu)
 
 ### JP2: batch režim (adresář)
 
@@ -81,6 +82,7 @@ python .\jp2.py C:\data\jp2 --jpylyzer-cmd C:\jpylyzer\jpylyzer.exe --recursive
 ```
 
 Globy (lze opakovat):
+
 ```powershell
 python .\jp2.py C:\data --recursive --glob "*.jp2" --glob "*.xml"
 ```
@@ -96,26 +98,31 @@ python .\tiff.py C:\data\img.tif
 ```
 
 Nastavení WSL/tiffdump:
+
 ```powershell
 python .\tiff.py C:\data\img.tif --wsl wsl --tiffdump tiffdump --timeout 30
 ```
 
 Extra args pro tiffdump (jednoduchý split podle mezer):
+
 ```powershell
 python .\tiff.py C:\data\img.tif --tiffdump-args "-D"
 ```
 
 Vypnutí konverze cesty (`C:\...` → `/mnt/c/...`):
+
 ```powershell
 python .\tiff.py C:\data\img.tif --no-convert-path
 ```
 
 Batch režim + rekurze:
+
 ```powershell
 python .\tiff.py C:\data\tiffs --recursive
 ```
 
 Globy:
+
 ```powershell
 python .\tiff.py C:\data --glob "*.tif" --glob "*.tiff"
 ```
@@ -132,7 +139,7 @@ Spuštění:
 python .\gui.py
 ```
 
-- Záložka **JP2** umí validovat soubor *nebo adresář* (rekurze + globs), volby jpylyzeru, `--dump-map`, `--packetmarkers`, a také scan markerů FF55/TLM.
+- Záložka **JP2** umí validovat soubor *nebo adresář* (rekurze + globs), volby jpylyzeru, `--dump-map`, `--packetmarkers`, a také scan markerů / TLM.
 - Záložka **TIFF** umí validovat soubor *nebo adresář* (rekurze + globs), nastavení WSL/tiffdump, timeout atd.
 - Barevný výstup: **OK zeleně**, **WARN oranžově**, **FAIL červeně**
 - Konfigurace se ukládá do `gui_config.json` vedle skriptu.
@@ -142,13 +149,16 @@ python .\gui.py
 ## Profily a pravidla
 
 ### Vestavěné profily
+
 - `jp2.py` používá vestavěný profil “NDK Master/Archival JP2 (core rules)”.
 - `tiff.py` používá vestavěný TIFF profil “NDK Master”.
 
 ### Vlastní profil (JSON)
+
 Oba validátory umí načíst `--profile profil.json` (v GUI volba „Profil JSON“).
 
 Struktura profilu:
+
 - `name`: volitelný název profilu
 - `descriptions`: mapování `key → popisek` (použije se ve výpisu)
 - `rules`: seznam pravidel `{id, key, assert, expected, level, message, when?}`
@@ -168,11 +178,14 @@ Uložte např. jako `profile_jp2_custom.json`:
     "jpylyzer.file.properties.contiguousCodestreamBox.cod.transformation": "Transformace (COD)",
     "jpylyzer.file.properties.contiguousCodestreamBox.cod.order": "Progression order (COD)",
     "jpylyzer.file.properties.contiguousCodestreamBox.cod.levels": "Počet dekompozičních úrovní (COD)",
+    "jpylyzer.file.properties.contiguousCodestreamBox.cod.layers": "Počet quality layers (COD)",
     "jpylyzer.file.properties.contiguousCodestreamBox.siz.xTsiz": "Dlaždice – tile width (SIZ)",
     "jpylyzer.file.properties.contiguousCodestreamBox.siz.yTsiz": "Dlaždice – tile height (SIZ)",
     "derived.tlm_present": "TLM (Tile Length Markers) přítomno",
     "derived.icc_present": "ICC profil přítomen",
-    "derived.tparts_org_inferred": "Tile-part organization (inferováno)"
+    "derived.tilepart_sequence_pattern": "Vzor serializace tile-partů",
+    "derived.tilepart_grouping_inferred": "Grouping tile-partů (heuristika)",
+    "derived.tileparts_count_matches_resolutions": "Počet tile-partů odpovídá počtu rozlišení"
   },
   "rules": [
     {
@@ -213,7 +226,7 @@ Uložte např. jako `profile_jp2_custom.json`:
       "assert": "equals",
       "expected": true,
       "level": "error",
-      "message": "TLM marker (FF55) / tlm element musí být přítomen."
+      "message": "TLM marker segment musí být přítomen."
     },
     {
       "id": "icc_present",
@@ -224,12 +237,20 @@ Uložte např. jako `profile_jp2_custom.json`:
       "message": "ICC profil musí být přítomen (v JP2 headeru)."
     },
     {
-      "id": "tileparts_org_warn",
-      "key": "derived.tparts_org_inferred",
+      "id": "tileparts_count_matches_resolutions",
+      "key": "derived.tileparts_count_matches_resolutions",
+      "assert": "equals",
+      "expected": true,
+      "level": "warn",
+      "message": "Počet tile-partů na tile by měl odpovídat počtu resolution levels + 1."
+    },
+    {
+      "id": "tilepart_grouping_r_like",
+      "key": "derived.tilepart_grouping_inferred",
       "assert": "in",
       "expected": ["R", "unknown"],
       "level": "warn",
-      "message": "ORGtparts=R je doporučení/heuristika – pokud inferujeme T, dáme WARN."
+      "message": "Heuristicky očekáváme resolution-grouped tile-party (R-like), ale nejde o normativní důkaz hodnoty encoder parametru."
     },
     {
       "id": "marker_scan_only_if_enabled",
@@ -237,7 +258,7 @@ Uložte např. jako `profile_jp2_custom.json`:
       "assert": "equals",
       "expected": true,
       "level": "warn",
-      "message": "Pokud používáte --scan-markers, chceme vidět FF55.",
+      "message": "Pokud používáte --scan-markers, chceme vidět TLM marker v codestreamu.",
       "when": { "key": "derived.jp2scan_enabled", "equals": true }
     }
   ]
@@ -245,9 +266,12 @@ Uložte např. jako `profile_jp2_custom.json`:
 ```
 
 Poznámky:
+
 - `level`: `"error"` → při nesplnění je `FAIL`, `"warn"` → při nesplnění je `WARN`.
 - `when` je volitelná podmínka (typicky pro pravidla závislá na tom, zda je zapnutý marker-scan).
 - `derived.*` jsou odvozené hodnoty počítané skriptem (ne přímo z jpylyzer).
+- `derived.tilepart_sequence_pattern` popisuje jen **pořadí SOT / tile-partů v codestreamu**; není to totéž jako encoderové `R/L/C`.
+- `derived.tilepart_grouping_inferred` je záměrně konzervativní heuristika: skript se nesnaží normativně dokazovat celé `R/L/C`, jen odhadnout, zda stream vypadá jako resolution-major profil.
 
 ---
 
@@ -341,8 +365,9 @@ Uložte např. jako `profile_tiff_custom.json`:
 ```
 
 Poznámky:
+
 - TIFF klíče závisí na tom, jak `tiff.py` mapuje výstup `tiffdump`.
-- `derived.dpi_x` / `derived.dpi_y` jsou odvozené hodnoty (přepočet z XResolution/YResolution + ResolutionUnit).
+- `derived.dpi_x` / `derived.dpi_y` jsou odvozené hodnoty (přepočet z `XResolution`/`YResolution` + `ResolutionUnit`).
 
 ---
 
@@ -364,6 +389,7 @@ Typicky problém s cestou do WSL. V GUI nechte zapnuté **„Převést Win cestu
 
 ### TIFF: `tiffdump` není ve WSL
 Nainstalujte ve WSL:
+
 ```bash
 sudo apt update
 sudo apt install libtiff-tools
@@ -372,9 +398,16 @@ sudo apt install libtiff-tools
 ### JP2: jpylyzer nenalezen
 Zadejte `--jpylyzer-cmd C:\...\jpylyzer.exe` (nebo vyberte v GUI).
 
-### TLM / FF55
-Jpylyzer umí ukázat `<tlm/>` element, ale někdy je užitečné potvrdit i marker-scanem:
-- zapněte `--scan-markers` (a případně `--dump-jp2scan`)
+### JP2: TLM vychází chybně u velkých souborů
+Pokud je zapnutý `--scan-markers`, skript může u velmi velkých souborů přeskočit plný byte-scan. V takovém případě by měl fallbacknout na parsovaný výstup jpylyzeru (`<tlm/>` v `contiguousCodestreamBox`). `--dump-jp2scan` pomůže ukázat, zda byl scan skutečně proveden, nebo přeskočen.
+
+### JP2: tile-party / ORGtparts
+Skript rozlišuje dvě různé věci:
+
+- **vzor serializace tile-partů** (`derived.tilepart_sequence_pattern`) – např. `by_tile` nebo `by_part_index`
+- **heuristický odhad resolution-grouped chování** (`derived.tilepart_grouping_inferred`)
+
+To první není totéž jako encoderová volba `--tile-parts R|L|C`. Hodnoty `R/L/C` popisují, **jak jsou packety seskupené do tile-partů**, ne nutně globální pořadí všech `SOT` v souboru.
 
 ---
 
@@ -386,15 +419,18 @@ GPLv3.
 
 ## Poznámky k NDK
 
-- JP2 pravidla jsou nastavená podle mé vlastní interpretace NDK Archival / Master kopie (5-3 reversible, no quantization, RPCL, 4096 tiling atd.).
+- JP2 pravidla jsou nastavená podle praktické interpretace NDK Archival / Master kopie (5-3 reversible, no quantization, RPCL, 4096 tiling atd.).
 - ICC je kontrolováno jako **FAIL**, pokud v datech není přítomné.
-- **ORGtparts R** heuristika je **heuristika** (odvozená z pořadí SOT/tpsot/isot) – není to “oficiální” pole v JP2, ale praktická interpretace. V profilu NDK řazení tile partů podle rozlišení není zřejmě specificky vyžadováno, ale vyskytuje se jako přepínač ve vzorových příkazech pro Kakadu kodek.
-- **TLM a heuristika „FF55“:** Jpylyzer umí indikovat přítomnost TLM marker segmentu jako `<tlm/>` (tj. element existuje, i když nemá textovou hodnotu). Pro rychlé „sanity check“ je možné doplnit *nízkoúrovňovou* heuristiku, která v surovém codestreamu hledá marker `0xFF55` (TLM). **Pozor:** samotný výskyt bajtové dvojice `FF55` *kdekoli v souboru* není důkaz TLM — může se objevit i jako data uvnitř jiných segmentů. Smysl má až kontrola, že `FF55` leží **v hlavičce codestreamu** na očekávaném místě mezi marker segmenty (typicky po `SIZ/COD/QCD/COM…` a před prvními `SOT`). Proto se to bere jen jako heuristika pro diagnostiku/ladění a rozhodující je parsovaný výstup z nástroje (jpylyzer / dump codestreamu).
-- Při vyjasnění sporných parametrů *hardcodenutou* interpretaci opravím.
+- Tile-party jsou kontrolované **heuristicky**. Validátor nerozhoduje normativně celé `ORGtparts=R/L/C`, ale snaží se odhadnout, zda stream odpovídá očekávanému resolution-major profilu.
+- `derived.tilepart_sequence_pattern` je pomocná diagnostická informace o pořadí SOT / tile-partů v codestreamu.
+- `derived.tilepart_grouping_inferred = "R"` je jen konzervativní inferenční závěr.
+- TLM je ideálně potvrzené parsovaným výstupem (`<tlm/>` / marker v main headeru). Nízkourovňový marker-scan je pomocná diagnostika.
+- Při vyjasnění sporných parametrů je vhodné hardcoded interpretaci profilu průběžně upravit.
 
 ---
 
 ## Screenshot
+
 <img width="1182" height="851" alt="valid2000" src="https://github.com/user-attachments/assets/24882f7b-b9fe-4297-b1be-9a2515f46c04" />
 
 ---
@@ -402,4 +438,3 @@ GPLv3.
 ## AI generated code disclosure
 
 The code is generated using ChatGPT 5.x.
-
